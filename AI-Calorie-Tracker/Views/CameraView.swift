@@ -14,95 +14,46 @@ struct CameraView: View {
     @State private var showCameraPicker = false
     @State private var showPhotoPicker = false
     @State private var cameraDeniedAlert = false
-    @State private var showAnalysisView = false
-    @State private var showErrorAlert = false
-    @State private var analysisTask: Task<Void, Never>?
-    
+
     @StateObject private var cameraViewModel = CameraViewModel()
-    @Environment(\.managedObjectContext) private var viewContext
-    
     @StateObject private var analysisViewModel: FoodAnalysisViewModel = {
         let context = PersistenceController.shared.container.viewContext
         let persistenceService = PersistenceService(viewContext: context)
         return FoodAnalysisViewModel(persistenceService: persistenceService)
     }()
+    @Environment(\.managedObjectContext) private var viewContext
+    
+    @State private var showAnalysisView = false
+    @State private var showErrorAlert = false
+    @State private var refreshID = UUID() // Force view refresh
+    @State private var analysisProgress: Double = 0.0
+    @State private var showAnalysisOverlay = false
+    @State private var analysisTask: Task<Void, Never>?
     
     var body: some View {
         NavigationView {
             mainContent
                 .navigationTitle("Food Tracker")
-                .toolbar {
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        if cameraViewModel.selectedImage != nil {
-                            Button("Clear") {
-                                cameraViewModel.clearImage()
-                                analysisViewModel.clearAnalysis()
-                            }
-                        }
-                    }
-                }
-        }
-        .sheet(isPresented: $showPhotoPicker) {
-            ImagePicker(
-                selectedImage: $cameraViewModel.selectedImage,
-                isPresented: $showPhotoPicker,
-                sourceType: .photoLibrary,
-                onImageSelected: { image in
-                    cameraViewModel.didSelectImage(image)
-                }
-            )
-        }
-        .sheet(isPresented: $showCameraPicker) {
-            ImagePicker(
-                selectedImage: $cameraViewModel.selectedImage,
-                isPresented: $showCameraPicker,
-                sourceType: .camera,
-                onImageSelected: { image in
-                    cameraViewModel.didSelectImage(image)
-                }
-            )
-        }
-        .sheet(isPresented: $showAnalysisView) {
-            if analysisViewModel.analysis != nil {
-                FoodAnalysisView(
+                .preferredColorScheme(.light) // Force light mode
+                .modifier(CameraViewModifiers(
+                    cameraViewModel: cameraViewModel,
                     analysisViewModel: analysisViewModel,
-                    cameraViewModel: cameraViewModel
-                )
-                .presentationDetents([.large])
-                .presentationDragIndicator(.visible)
-            }
-        }
-        .alert("Error", isPresented: $showErrorAlert) {
-            Button("OK") {
-                cameraViewModel.errorMessage = nil
-                analysisViewModel.errorMessage = nil
-            }
-        } message: {
-            if let error = cameraViewModel.errorMessage {
-                Text(error)
-            } else if let error = analysisViewModel.errorMessage {
-                Text(error)
-            }
-        }
-        .alert("Camera Access Needed", isPresented: $cameraDeniedAlert) {
-            Button("OK", role: .cancel) {}
-            Button("Open Settings") {
-                if let url = URL(string: UIApplication.openSettingsURLString) {
-                    UIApplication.shared.open(url)
+                    showPhotoPicker: $showPhotoPicker,
+                    showCameraPicker: $showCameraPicker,
+                    showAnalysisView: $showAnalysisView,
+                    showErrorAlert: $showErrorAlert,
+                    cameraDeniedAlert: $cameraDeniedAlert,
+                    requestAndPresentCamera: requestAndPresentCamera,
+                    onImageSet: {
+                        // Force view refresh when image is set
+                        refreshID = UUID()
+                    }
+                ))
+                .onDisappear {
+                    // Cancel analysis task when view disappears
+                    analysisTask?.cancel()
+                    analysisTask = nil
                 }
-            }
-        } message: {
-            Text("Please allow camera access in Settings to take photos.")
-        }
-        .onChange(of: cameraViewModel.errorMessage) { _, newValue in
-            showErrorAlert = newValue != nil
-        }
-        .onChange(of: analysisViewModel.errorMessage) { _, newValue in
-            showErrorAlert = newValue != nil
-        }
-        .onDisappear {
-            analysisTask?.cancel()
-            analysisTask = nil
         }
     }
     
@@ -110,14 +61,16 @@ struct CameraView: View {
         ZStack {
             if let image = cameraViewModel.selectedImage {
                 imagePreviewView(image: image)
+                    .id(refreshID) // Force view update when refreshID changes
             } else {
                 cameraSelectionView
             }
         }
+        .id(refreshID) // Also add ID to the ZStack to force refresh
     }
     
     private func imagePreviewView(image: UIImage) -> some View {
-        ScrollView {
+        ZStack {
             VStack(spacing: 24) {
                 // Image Preview Card
                 ZStack {
@@ -139,9 +92,14 @@ struct CameraView: View {
                     analyzeButton
                     
                     Button(action: {
+                        // Clear image, analysis, and close analysis view
                         cameraViewModel.clearImage()
                         analysisViewModel.clearAnalysis()
                         showAnalysisView = false
+                        showAnalysisOverlay = false
+                        analysisProgress = 0
+                        // Force view refresh
+                        refreshID = UUID()
                     }) {
                         HStack {
                             Image(systemName: "arrow.triangle.2.circlepath")
@@ -158,7 +116,11 @@ struct CameraView: View {
                     }
                     .padding(.horizontal)
                 }
-                .padding(.bottom)
+            }
+            
+            // Analysis Overlay
+            if showAnalysisOverlay {
+                analysisOverlay
             }
         }
     }
@@ -168,14 +130,11 @@ struct CameraView: View {
             analyzeImage()
         }) {
             HStack(spacing: 12) {
-                if !cameraViewModel.isLoading && !analysisViewModel.isLoading {
+                if !cameraViewModel.isLoading {
                     Image(systemName: "sparkles")
                         .font(.title3)
-                } else {
-                    ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
                 }
-                Text(cameraViewModel.isLoading || analysisViewModel.isLoading ? "Analyzing..." : "Analyze Food")
+                Text(cameraViewModel.isLoading ? "Analyzing..." : "Analyze Food")
                     .fontWeight(.semibold)
                     .font(.headline)
             }
@@ -183,17 +142,83 @@ struct CameraView: View {
             .padding(.vertical, 16)
             .background(
                 LinearGradient(
-                    colors: (cameraViewModel.isLoading || analysisViewModel.isLoading) ? [Color.gray, Color.gray.opacity(0.8)] : [Color.blue, Color.blue.opacity(0.8)],
+                    colors: cameraViewModel.isLoading ? [Color.gray, Color.gray.opacity(0.8)] : [Color.blue, Color.blue.opacity(0.8)],
                     startPoint: .leading,
                     endPoint: .trailing
                 )
             )
             .foregroundColor(.white)
             .cornerRadius(16)
-            .shadow(color: (cameraViewModel.isLoading || analysisViewModel.isLoading) ? Color.clear : Color.blue.opacity(0.3), radius: 10, x: 0, y: 5)
+            .shadow(color: cameraViewModel.isLoading ? Color.clear : Color.blue.opacity(0.3), radius: 10, x: 0, y: 5)
         }
-        .disabled(cameraViewModel.isLoading || analysisViewModel.isLoading)
+        .disabled(cameraViewModel.isLoading)
         .padding(.horizontal)
+    }
+    
+    private var analysisOverlay: some View {
+        ZStack {
+            // Blur background
+            Color.black.opacity(0.7)
+                .ignoresSafeArea()
+            
+            VStack(spacing: 30) {
+                // Circular Progress Indicator
+                ZStack {
+                    // Background circle
+                    Circle()
+                        .stroke(Color.white.opacity(0.2), lineWidth: 12)
+                        .frame(width: 180, height: 180)
+                    
+                    // Progress circle
+                    Circle()
+                        .trim(from: 0, to: analysisProgress)
+                        .stroke(
+                            LinearGradient(
+                                colors: [.blue, .purple, .pink],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            style: StrokeStyle(lineWidth: 12, lineCap: .round)
+                        )
+                        .frame(width: 180, height: 180)
+                        .rotationEffect(.degrees(-90))
+                        .animation(.spring(response: 0.5, dampingFraction: 0.8), value: analysisProgress)
+                    
+                    // Percentage and icon
+                    VStack(spacing: 8) {
+                        Image(systemName: "brain.head.profile")
+                            .font(.system(size: 40))
+                            .foregroundColor(.white)
+                            .symbolEffect(.pulse, options: .repeating)
+                        
+                        Text("\(Int(analysisProgress * 100))%")
+                            .font(.system(size: 32, weight: .bold, design: .rounded))
+                            .foregroundColor(.white)
+                        
+                        Text("Analyzing...")
+                            .font(.subheadline)
+                            .foregroundColor(.white.opacity(0.8))
+                    }
+                }
+                
+                // Animated dots
+                HStack(spacing: 8) {
+                    ForEach(0..<3) { index in
+                        Circle()
+                            .fill(Color.white)
+                            .frame(width: 10, height: 10)
+                            .scaleEffect(analysisProgress > 0 ? 1 : 0.5)
+                            .animation(
+                                .easeInOut(duration: 0.6)
+                                .repeatForever()
+                                .delay(Double(index) * 0.2),
+                                value: analysisProgress
+                            )
+                    }
+                }
+            }
+        }
+        .transition(.opacity.combined(with: .scale))
     }
     
     private var cameraSelectionView: some View {
@@ -317,11 +342,44 @@ struct CameraView: View {
         analysisTask?.cancel()
         
         cameraViewModel.isLoading = true
+        showAnalysisOverlay = true
+        analysisProgress = 0
         
         analysisTask = Task { @MainActor in
             // Check for cancellation
+            guard !Task.isCancelled else { return }
+            // Start progress animation
+            withAnimation(.linear(duration: 0.1)) {
+                analysisProgress = 0.1
+            }
+            
+            // Simulate progress updates
+            for progress in stride(from: 0.1, through: 0.9, by: 0.1) {
+                // Check for cancellation
+                if Task.isCancelled {
+                    cameraViewModel.isLoading = false
+                    showAnalysisOverlay = false
+                    return
+                }
+                
+                try? await Task.sleep(nanoseconds: 200_000_000) // 0.2 seconds
+                
+                // Check again after sleep
+                if Task.isCancelled {
+                    cameraViewModel.isLoading = false
+                    showAnalysisOverlay = false
+                    return
+                }
+                
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    analysisProgress = progress
+                }
+            }
+            
+            // Check for cancellation before API call
             guard !Task.isCancelled else {
                 cameraViewModel.isLoading = false
+                showAnalysisOverlay = false
                 return
             }
             
@@ -331,16 +389,167 @@ struct CameraView: View {
             // Check for cancellation after API call
             guard !Task.isCancelled else {
                 cameraViewModel.isLoading = false
+                showAnalysisOverlay = false
+                return
+            }
+            
+            // Complete progress
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                analysisProgress = 1.0
+            }
+            
+            // Small delay to show completion
+            try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+            
+            // Final cancellation check
+            guard !Task.isCancelled else {
+                cameraViewModel.isLoading = false
+                showAnalysisOverlay = false
                 return
             }
             
             cameraViewModel.isLoading = false
+            showAnalysisOverlay = false
+            analysisProgress = 0
             
             if analysisViewModel.analysis != nil {
                 showAnalysisView = true
             } else if let error = analysisViewModel.errorMessage {
                 cameraViewModel.errorMessage = error
             }
+        }
+    }
+}
+
+// MARK: - View Modifiers
+private struct CameraViewModifiers: ViewModifier {
+    let cameraViewModel: CameraViewModel
+    let analysisViewModel: FoodAnalysisViewModel
+    @Binding var showPhotoPicker: Bool
+    @Binding var showCameraPicker: Bool
+    @Binding var showAnalysisView: Bool
+    @Binding var showErrorAlert: Bool
+    @Binding var cameraDeniedAlert: Bool
+    let requestAndPresentCamera: () async -> Void
+    let onImageSet: () -> Void
+    
+    func body(content: Content) -> some View {
+        let showActionSheetBinding = Binding(
+            get: { cameraViewModel.showActionSheet },
+            set: { cameraViewModel.showActionSheet = $0 }
+        )
+        
+        _ = Binding(
+            get: { cameraViewModel.showImagePicker },
+            set: { cameraViewModel.showImagePicker = $0 }
+        )
+        
+        let selectedImageBinding = Binding(
+            get: { cameraViewModel.selectedImage },
+            set: { newValue in
+                // Direct assignment - @Published will handle the update
+                // CameraViewModel is @MainActor so this is already on main thread
+                cameraViewModel.selectedImage = newValue
+                // Call callback to force view refresh
+                if newValue != nil {
+                    onImageSet()
+                }
+            }
+        )
+        
+        let withDialogs = content
+            .confirmationDialog("Select Photo Source", isPresented: showActionSheetBinding, titleVisibility: .visible) {
+                confirmationDialogContent
+            }
+        
+        let withSheets = withDialogs
+            .sheet(isPresented: $showPhotoPicker) {
+                ImagePicker(
+                    selectedImage: selectedImageBinding,
+                    isPresented: $showPhotoPicker,
+                    sourceType: .photoLibrary,
+                    onImageSelected: { image in
+                        // Direct update to ensure view refreshes
+                        cameraViewModel.selectedImage = image
+                        onImageSet()
+                    }
+                )
+            }
+            .sheet(isPresented: $showCameraPicker) {
+                ImagePicker(
+                    selectedImage: selectedImageBinding,
+                    isPresented: $showCameraPicker,
+                    sourceType: .camera,
+                    onImageSelected: { image in
+                        // Direct update to ensure view refreshes
+                        cameraViewModel.selectedImage = image
+                        onImageSet()
+                    }
+                )
+            }
+            .sheet(isPresented: $showAnalysisView) {
+                analysisSheetContent
+                    .presentationDetents([.large])
+                    .presentationDragIndicator(.visible)
+            }
+        
+        let withAlerts = withSheets
+            .alert("Error", isPresented: $showErrorAlert) {
+                Button("OK") {
+                    cameraViewModel.errorMessage = nil
+                }
+            } message: {
+                if let error = cameraViewModel.errorMessage {
+                    Text(error)
+                }
+            }
+            .alert("Camera Access Needed", isPresented: $cameraDeniedAlert) {
+                Button("OK", role: .cancel) {}
+                Button("Open Settings") {
+                    if let url = URL(string: UIApplication.openSettingsURLString) {
+                        UIApplication.shared.open(url)
+                    }
+                }
+            } message: {
+                Text("Please allow camera access in Settings to take photos.")
+            }
+        
+        return withAlerts
+            .onChange(of: cameraViewModel.errorMessage) { _, newValue in
+                showErrorAlert = newValue != nil
+            }
+            .onChange(of: cameraViewModel.selectedImage) { oldValue, newValue in
+                // Explicitly observe image changes to ensure view updates
+                // This helps debug if the binding is working
+                if newValue != nil {
+                    // Image was set - view should update automatically via @StateObject
+                }
+            }
+    }
+    
+    private var confirmationDialogContent: some View {
+        Group {
+            if cameraViewModel.isCameraAvailable {
+                Button("Camera") {
+                    Task { await requestAndPresentCamera() }
+                }
+            }
+            if cameraViewModel.isPhotoLibraryAvailable {
+                Button("Photo Library") {
+                    showPhotoPicker = true
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        }
+    }
+    
+    @ViewBuilder
+    private var analysisSheetContent: some View {
+        if analysisViewModel.analysis != nil {
+            FoodAnalysisView(
+                analysisViewModel: analysisViewModel,
+                cameraViewModel: cameraViewModel
+            )
         }
     }
 }

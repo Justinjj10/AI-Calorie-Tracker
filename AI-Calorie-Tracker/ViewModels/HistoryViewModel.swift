@@ -96,6 +96,7 @@ class HistoryViewModel: ObservableObject {
     }
     
     /// Filter food logs by meal type
+    /// - Parameter mealType: Meal type to filter by (nil for all)
     /// - Returns: Filtered food logs
     func filteredFoodLogs() -> [FoodLog] {
         guard let mealType = selectedMealType else {
@@ -126,4 +127,3 @@ class HistoryViewModel: ObservableObject {
         }
     }
 }
-

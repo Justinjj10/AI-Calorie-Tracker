@@ -16,6 +16,7 @@ struct AI_Calorie_TrackerApp: App {
         WindowGroup {
             MainTabView()
                 .environment(\.managedObjectContext, persistenceController.container.viewContext)
+                .preferredColorScheme(.light) // Force light mode
         }
     }
 }

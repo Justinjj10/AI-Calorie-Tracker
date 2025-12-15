@@ -13,7 +13,7 @@ enum Config {
     /// WARNING: Never commit API keys to version control!
     /// For production, use Keychain or secure storage
     /// Get your API key from: https://platform.openai.com/api-keys
-    /// 
+    ///
     /// To set the API key:
     /// 1. Edit Scheme > Run > Arguments > Environment Variables
     /// 2. Add OPENAI_API_KEY with your API key value
@@ -23,15 +23,19 @@ enum Config {
         if let apiKey = ProcessInfo.processInfo.environment["OPENAI_API_KEY"], !apiKey.isEmpty {
             return apiKey
         }
-        // Fallback to hardcoded key for development (REMOVE IN PRODUCTION)
-        return "your-api-key-here"
+        
+        // Fallback: Return empty string or placeholder for development
+        // WARNING: Set OPENAI_API_KEY environment variable in Xcode:
+        // Edit Scheme > Run > Arguments > Environment Variables
+        // Add: OPENAI_API_KEY = your-api-key-here
+        return ""
     }
     
     /// OpenAI API Base URL
     static let openAIBaseURL = "https://api.openai.com/v1"
     
     /// OpenAI Model to use
-    static let openAIModel = "gpt-4o" 
+    static let openAIModel = "gpt-4o"
     
     /// Maximum image size for API (in bytes) - 20MB limit
     static let maxImageSize: Int = 20 * 1024 * 1024
@@ -39,4 +43,3 @@ enum Config {
     /// Target image size for compression (in bytes) - 4MB target
     static let targetImageSize: Int = 4 * 1024 * 1024
 }
-

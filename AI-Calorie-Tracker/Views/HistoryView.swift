@@ -35,20 +35,13 @@ struct HistoryView: View {
                         }) {
                             Image(systemName: "chevron.left")
                                 .foregroundColor(.blue)
-                                .font(.title3)
                         }
                         
                         Spacer()
                         
-                        Button(action: {
-                            viewModel.selectedDate = Date()
-                            viewModel.loadFoodLogsForSelectedDate()
-                        }) {
-                            Text(viewModel.selectedDate, style: .date)
-                                .font(.title2)
-                                .fontWeight(.semibold)
-                                .foregroundColor(.primary)
-                        }
+                        Text(viewModel.selectedDate, style: .date)
+                            .font(.title2)
+                            .fontWeight(.semibold)
                         
                         Spacer()
                         
@@ -58,7 +51,6 @@ struct HistoryView: View {
                         }) {
                             Image(systemName: "chevron.right")
                                 .foregroundColor(.blue)
-                                .font(.title3)
                         }
                     }
                     .padding(.horizontal)
@@ -169,7 +161,7 @@ struct HistoryView: View {
                                 }
                             }
                         }
-                        .listStyle(.plain)
+                        .listStyle(PlainListStyle())
                     }
                 }
             }
@@ -185,6 +177,7 @@ struct HistoryView: View {
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
             }
+            .preferredColorScheme(.light) // Force light mode
             .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
                 Button("OK") {
                     viewModel.errorMessage = nil
@@ -284,8 +277,8 @@ struct FoodLogRowView: View {
     }
 }
 
+
 #Preview {
     HistoryView()
         .environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
 }
-

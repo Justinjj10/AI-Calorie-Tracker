@@ -7,6 +7,7 @@
 
 import Foundation
 
+
 // MARK: - DateFormatter Extension
 extension DateFormatter {
     /// Shared date formatter for food log dates
@@ -84,14 +85,6 @@ extension Decodable {
 extension Array where Element: Numeric {
     /// Sum of all elements
     var sum: Element {
-        reduce(0, +)
-    }
-}
-
-// MARK: - Sequence Extension for Double
-extension Sequence where Element == Double {
-    /// Sum of all elements
-    func sum() -> Double {
         reduce(0, +)
     }
 }

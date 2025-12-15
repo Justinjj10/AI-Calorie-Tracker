@@ -54,7 +54,7 @@ class ImageService: ImageProcessingProtocol {
         }
         
         // Binary search for optimal compression quality
-        return findOptimalCompression(image: currentImage, targetSize: targetSize) 
+        return findOptimalCompression(image: currentImage, targetSize: targetSize)
             ?? currentImage.jpegData(compressionQuality: Constants.defaultQuality)
     }
     
@@ -142,4 +142,3 @@ class ImageService: ImageProcessingProtocol {
         }
     }
 }
-

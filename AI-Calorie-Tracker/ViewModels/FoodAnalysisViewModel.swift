@@ -8,7 +8,7 @@
 import SwiftUI
 import Combine
 
-/// ViewModel for food analysis and ingredient editing
+//// ViewModel for food analysis and ingredient editing
 @MainActor
 class FoodAnalysisViewModel: ObservableObject {
     @Published var analysis: FoodAnalysis?
@@ -180,4 +180,3 @@ class FoodAnalysisViewModel: ObservableObject {
         }
     }
 }
-

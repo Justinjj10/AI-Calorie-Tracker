@@ -15,6 +15,7 @@ struct FoodLogDetailView: View {
     @Environment(\.dismiss) private var dismiss
     
     @StateObject private var analysisViewModel: FoodAnalysisViewModel
+    @State private var showEditView = false
     @State private var appearAnimation = false
     
     init(foodLog: FoodLog, viewModel: HistoryViewModel) {
@@ -59,7 +60,8 @@ struct FoodLogDetailView: View {
                     
                     // Ingredients Card
                     if let ingredientsJSON = foodLog.ingredientsJSON,
-                       let ingredients = try? [Ingredient].fromJSONString(ingredientsJSON) {
+                       let data = ingredientsJSON.data(using: .utf8),
+                       let ingredients = try? JSONDecoder().decode([Ingredient].self, from: data) {
                         ingredientsCard(ingredients: ingredients)
                             .opacity(appearAnimation ? 1 : 0)
                             .offset(y: appearAnimation ? 0 : -20)
@@ -91,9 +93,10 @@ struct FoodLogDetailView: View {
                 do {
                     try analysisViewModel.loadFromFoodLog(foodLog)
                 } catch {
-                    // Handle error silently
+                    // Handle error
                 }
             }
+            .preferredColorScheme(.light) // Force light mode
         }
     }
     

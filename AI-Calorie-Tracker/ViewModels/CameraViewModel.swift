@@ -13,6 +13,8 @@ import AVFoundation
 /// ViewModel for camera and image picker functionality
 @MainActor
 class CameraViewModel: ObservableObject {
+    let objectWillChange = ObservableObjectPublisher()
+    
     @Published var selectedImage: UIImage?
     @Published var showImagePicker = false
     @Published var showCamera = false
@@ -47,7 +49,7 @@ class CameraViewModel: ObservableObject {
             showCamera = true
         case .notDetermined:
             AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
-                Task { @MainActor in
+                DispatchQueue.main.async {
                     if granted {
                         self?.showCamera = true
                     } else {

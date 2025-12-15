@@ -33,7 +33,7 @@ class OpenAIService: APIServiceProtocol {
     /// - Returns: FoodAnalysis with ingredients and calories
     /// - Throws: OpenAIError for various API failures
     func analyzeFoodImage(imageBase64: String) async throws -> FoodAnalysis {
-        guard !apiKey.isEmpty, apiKey != "your-api-key-here" else {
+        guard !apiKey.isEmpty else {
             throw OpenAIError.invalidAPIKey
         }
         
@@ -109,7 +109,7 @@ class OpenAIService: APIServiceProtocol {
                     // Log response for debugging
                     #if DEBUG
                     if let jsonObject = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                        print("📥 [OpenAI] API Response:")
+                        print("📥 OpenAI API Response:")
                         print(jsonObject)
                     }
                     #endif
@@ -192,4 +192,3 @@ class OpenAIService: APIServiceProtocol {
         return message
     }
 }
-

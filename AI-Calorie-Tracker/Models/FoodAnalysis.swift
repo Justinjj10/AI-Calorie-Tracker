@@ -7,7 +7,7 @@
 
 import Foundation
 
-/// Response structure from OpenAI Vision API
+//// Response structure from OpenAI Vision API
 struct FoodAnalysis: Codable {
     var ingredients: [Ingredient]
     var totalCalories: Double
@@ -16,7 +16,7 @@ struct FoodAnalysis: Codable {
     
     /// Calculate total calories from ingredients
     mutating func updateTotalCalories() {
-        totalCalories = ingredients.map { $0.calories }.reduce(0, +)
+        totalCalories = ingredients.map { $0.calories }.sum
     }
 }
 
@@ -93,4 +93,3 @@ enum OpenAIError: LocalizedError {
         }
     }
 }
-

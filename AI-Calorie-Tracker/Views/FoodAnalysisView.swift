@@ -63,8 +63,6 @@ struct FoodAnalysisView: View {
                     } else {
                         Text("No analysis available")
                             .foregroundColor(.secondary)
-                            .frame(maxWidth: .infinity, alignment: .center)
-                            .padding()
                     }
                 }
                 .padding()
@@ -82,6 +80,7 @@ struct FoodAnalysisView: View {
             .onAppear {
                 appearAnimation = true
             }
+            .preferredColorScheme(.light) // Force light mode
             .alert("Error", isPresented: .constant(analysisViewModel.errorMessage != nil)) {
                 Button("OK") {
                     analysisViewModel.errorMessage = nil
@@ -95,7 +94,6 @@ struct FoodAnalysisView: View {
                 Button("OK") {
                     dismiss()
                     cameraViewModel.clearImage()
-                    analysisViewModel.clearAnalysis()
                 }
             } message: {
                 Text("Food log saved successfully")
@@ -207,7 +205,7 @@ struct FoodAnalysisView: View {
                 Label("Dinner", systemImage: "moon.fill").tag("dinner")
                 Label("Snack", systemImage: "cup.and.saucer.fill").tag("snack")
             }
-            .pickerStyle(.segmented)
+            .pickerStyle(SegmentedPickerStyle())
         }
         .padding(20)
         .background(
@@ -374,7 +372,7 @@ struct IngredientRowView: View {
                 TextField("Ingredient name", text: $name)
                     .textFieldStyle(.plain)
                     .font(.body)
-                    .onChange(of: name) { _, newValue in
+                    .onChange(of: name) { newValue, _ in
                         if let qty = Double(quantity) {
                             onUpdate(newValue, qty, unit)
                         }
@@ -400,7 +398,7 @@ struct IngredientRowView: View {
                         .padding(8)
                         .background(Color(.systemGray6))
                         .cornerRadius(8)
-                        .onChange(of: quantity) { _, newValue in
+                        .onChange(of: quantity) { newValue, _ in
                             if let qty = Double(newValue) {
                                 onUpdate(name, qty, unit)
                             }
@@ -412,7 +410,7 @@ struct IngredientRowView: View {
                         .padding(8)
                         .background(Color(.systemGray6))
                         .cornerRadius(8)
-                        .onChange(of: unit) { _, newValue in
+                        .onChange(of: unit) { newValue, _ in
                             if let qty = Double(quantity) {
                                 onUpdate(name, qty, newValue)
                             }
@@ -447,13 +445,12 @@ struct IngredientRowView: View {
 }
 
 #Preview {
-    let context = PersistenceController.preview.container.viewContext
-    let persistenceService = PersistenceService(viewContext: context)
-    let viewModel = FoodAnalysisViewModel(persistenceService: persistenceService)
+    let persistenceService = PersistenceService(viewContext: PersistenceController.preview.container.viewContext)
+    let analysisViewModel = FoodAnalysisViewModel(persistenceService: persistenceService)
     let cameraViewModel = CameraViewModel()
     
     // Set sample analysis
-    viewModel.analysis = FoodAnalysis(
+    analysisViewModel.analysis = FoodAnalysis(
         ingredients: [
             Ingredient(name: "Chicken Breast", quantity: 200, unit: "g", calories: 330),
             Ingredient(name: "Rice", quantity: 150, unit: "g", calories: 195)
@@ -464,8 +461,10 @@ struct IngredientRowView: View {
     )
     
     return FoodAnalysisView(
-        analysisViewModel: viewModel,
+        analysisViewModel: analysisViewModel,
         cameraViewModel: cameraViewModel
     )
-    .environment(\.managedObjectContext, context)
+    .environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
 }
+
+

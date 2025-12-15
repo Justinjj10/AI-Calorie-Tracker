@@ -52,4 +52,3 @@ struct Ingredient: Codable, Identifiable, Equatable {
         return calories / quantity
     }
 }
-

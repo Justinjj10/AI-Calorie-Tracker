@@ -108,7 +108,7 @@ class PersistenceService: PersistenceProtocol {
     /// - Returns: Total calories for that date
     func getTotalCalories(for date: Date) throws -> Double {
         let logs = try fetchFoodLogs(for: date)
-        return logs.map { $0.totalCalories }.reduce(0, +)
+        return logs.map { $0.totalCalories }.sum
     }
     
     /// Convert FoodLog entity to FoodAnalysis
@@ -131,4 +131,3 @@ class PersistenceService: PersistenceProtocol {
         )
     }
 }
-

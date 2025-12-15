@@ -20,7 +20,7 @@ struct ImagePicker: UIViewControllerRepresentable {
         
         // Check if source type is available
         guard UIImagePickerController.isSourceTypeAvailable(sourceType) else {
-            Task { @MainActor in
+            DispatchQueue.main.async {
                 self.isPresented = false
             }
             return picker
@@ -48,14 +48,14 @@ struct ImagePicker: UIViewControllerRepresentable {
         
         func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
             guard let image = info[.originalImage] as? UIImage else {
-                Task { @MainActor in
+                DispatchQueue.main.async {
                     self.parent.isPresented = false
                 }
                 return
             }
             
-            // Set image on main thread
-            Task { @MainActor in
+            // Set image first on main thread
+            DispatchQueue.main.async {
                 // Set image - this triggers the binding which updates the view model
                 self.parent.selectedImage = image
                 
@@ -63,16 +63,16 @@ struct ImagePicker: UIViewControllerRepresentable {
                 self.parent.onImageSelected?(image)
                 
                 // Dismiss after a brief delay to ensure view updates
-                try? await Task.sleep(nanoseconds: 200_000_000) // 0.2 seconds
-                self.parent.isPresented = false
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                    self.parent.isPresented = false
+                }
             }
         }
         
         func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-            Task { @MainActor in
+            DispatchQueue.main.async {
                 self.parent.isPresented = false
             }
         }
     }
 }
-
