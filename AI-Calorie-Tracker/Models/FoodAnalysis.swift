@@ -16,7 +16,7 @@ struct FoodAnalysis: Codable {
     
     /// Calculate total calories from ingredients
     mutating func updateTotalCalories() {
-        totalCalories = ingredients.map { $0.calories }.sum
+        totalCalories = ingredients.map { $0.calories }.reduce(0, +)
     }
 }
 
@@ -91,13 +91,6 @@ enum OpenAIError: LocalizedError {
         case .apiError(let message):
             return message
         }
-    }
-}
-
-/// Extension to sum array of doubles
-extension Sequence where Element == Double {
-    func sum() -> Double {
-        return reduce(0, +)
     }
 }
 
