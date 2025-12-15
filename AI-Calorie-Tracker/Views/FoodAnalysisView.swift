@@ -17,124 +17,49 @@ struct FoodAnalysisView: View {
     @Environment(\.managedObjectContext) private var viewContext
     
     @State private var showSaveConfirmation = false
+    @State private var selectedDate = Date()
+    @State private var appearAnimation = false
     
     var body: some View {
         NavigationView {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     if let analysis = analysisViewModel.analysis {
-                        // Header with Calories
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Total Calories")
-                                .font(.headline)
-                                .foregroundColor(.secondary)
-                            Text("\(Int(analysis.totalCalories))")
-                                .font(.system(size: 48, weight: .bold))
-                                .foregroundColor(.blue)
-                        }
-                        .padding()
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(Color.blue.opacity(0.1))
-                        )
+                        // Header Card with Calories
+                        caloriesHeaderCard(analysis: analysis)
+                            .opacity(appearAnimation ? 1 : 0)
+                            .offset(y: appearAnimation ? 0 : -20)
+                            .animation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.1), value: appearAnimation)
                         
-                        // Meal Type
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Meal Type")
-                                .font(.headline)
-                                .foregroundColor(.secondary)
-                            Text(analysis.mealType.capitalized)
-                                .font(.title3)
-                                .fontWeight(.semibold)
-                        }
-                        .padding()
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(Color.gray.opacity(0.1))
-                        )
+                        // Meal Type Selection
+                        mealTypeCard(analysis: analysis)
+                            .opacity(appearAnimation ? 1 : 0)
+                            .offset(y: appearAnimation ? 0 : -20)
+                            .animation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.2), value: appearAnimation)
                         
-                        // Description
-                        if !analysis.description.isEmpty {
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("Description")
-                                    .font(.headline)
-                                    .foregroundColor(.secondary)
-                                Text(analysis.description)
-                                    .font(.body)
-                            }
-                            .padding()
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .fill(Color.gray.opacity(0.1))
-                            )
-                        }
+                        // Description Card
+                        descriptionCard(analysis: analysis)
+                            .opacity(appearAnimation ? 1 : 0)
+                            .offset(y: appearAnimation ? 0 : -20)
+                            .animation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.3), value: appearAnimation)
                         
                         // Ingredients List
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("Ingredients")
-                                .font(.headline)
-                                .foregroundColor(.secondary)
-                            
-                            ForEach(analysis.ingredients) { ingredient in
-                                HStack {
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text(ingredient.name)
-                                            .font(.body)
-                                            .fontWeight(.medium)
-                                        Text("\(ingredient.quantity, specifier: "%.1f") \(ingredient.unit)")
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
-                                    }
-                                    Spacer()
-                                    Text("\(Int(ingredient.calories)) cal")
-                                        .font(.body)
-                                        .fontWeight(.semibold)
-                                        .foregroundColor(.blue)
-                                }
-                                .padding()
-                                .background(
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .fill(Color.gray.opacity(0.05))
-                                )
-                            }
-                        }
-                        .padding()
-                        .background(
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(Color.gray.opacity(0.1))
-                        )
+                        ingredientsCard(analysis: analysis)
+                            .opacity(appearAnimation ? 1 : 0)
+                            .offset(y: appearAnimation ? 0 : -20)
+                            .animation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.4), value: appearAnimation)
+                        
+                        // Date Picker Card
+                        datePickerCard
+                            .opacity(appearAnimation ? 1 : 0)
+                            .offset(y: appearAnimation ? 0 : -20)
+                            .animation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.5), value: appearAnimation)
                         
                         // Save Button
-                        Button(action: {
-                            saveFoodLog()
-                        }) {
-                            HStack {
-                                if analysisViewModel.isSaving {
-                                    ProgressView()
-                                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                } else {
-                                    Image(systemName: "checkmark.circle.fill")
-                                }
-                                Text(analysisViewModel.isSaving ? "Saving..." : "Save Food Log")
-                                    .fontWeight(.semibold)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
-                            .background(
-                                LinearGradient(
-                                    colors: analysisViewModel.isSaving ? [Color.gray, Color.gray.opacity(0.8)] : [Color.green, Color.green.opacity(0.8)],
-                                    startPoint: .leading,
-                                    endPoint: .trailing
-                                )
-                            )
-                            .foregroundColor(.white)
-                            .cornerRadius(16)
-                        }
-                        .disabled(analysisViewModel.isSaving)
-                        .padding(.horizontal)
+                        saveButton
+                            .opacity(appearAnimation ? 1 : 0)
+                            .offset(y: appearAnimation ? 0 : -20)
+                            .animation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.6), value: appearAnimation)
                     } else {
                         Text("No analysis available")
                             .foregroundColor(.secondary)
@@ -154,6 +79,18 @@ struct FoodAnalysisView: View {
                     }
                 }
             }
+            .onAppear {
+                appearAnimation = true
+            }
+            .alert("Error", isPresented: .constant(analysisViewModel.errorMessage != nil)) {
+                Button("OK") {
+                    analysisViewModel.errorMessage = nil
+                }
+            } message: {
+                if let error = analysisViewModel.errorMessage {
+                    Text(error)
+                }
+            }
             .alert("Saved!", isPresented: $showSaveConfirmation) {
                 Button("OK") {
                     dismiss()
@@ -166,14 +103,346 @@ struct FoodAnalysisView: View {
         }
     }
     
+    private func addNewIngredient() {
+        let newIngredient = Ingredient(
+            name: "New Ingredient",
+            quantity: 100,
+            unit: "g",
+            calories: 0
+        )
+        analysisViewModel.addIngredient(newIngredient)
+    }
+    
     private func saveFoodLog() {
         let imageData = cameraViewModel.getCompressedImageData()
+        
         Task {
-            let success = await analysisViewModel.saveFoodLog(imageData: imageData, date: Date())
+            let success = await analysisViewModel.saveFoodLog(
+                imageData: imageData,
+                date: selectedDate
+            )
+            
             if success {
                 showSaveConfirmation = true
             }
         }
+    }
+    
+    // MARK: - View Components
+    
+    private func caloriesHeaderCard(analysis: FoodAnalysis) -> some View {
+        VStack(spacing: 12) {
+            HStack {
+                Image(systemName: "flame.fill")
+                    .font(.title2)
+                    .foregroundColor(.orange)
+                Text("Total Calories")
+                    .font(.headline)
+                    .foregroundColor(.primary)
+                Spacer()
+            }
+            
+            HStack(alignment: .lastTextBaseline, spacing: 8) {
+                Text("\(Int(analysis.totalCalories))")
+                    .font(.system(size: 48, weight: .bold, design: .rounded))
+                    .foregroundColor(.orange)
+                Text("kcal")
+                    .font(.title3)
+                    .foregroundColor(.secondary)
+            }
+            
+            // Progress bar
+            GeometryReader { geometry in
+                ZStack(alignment: .leading) {
+                    Rectangle()
+                        .fill(Color.gray.opacity(0.2))
+                        .frame(height: 8)
+                        .cornerRadius(4)
+                    
+                    Rectangle()
+                        .fill(
+                            LinearGradient(
+                                colors: [.orange, .red],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .frame(
+                            width: min(geometry.size.width * (analysis.totalCalories / 2000), geometry.size.width),
+                            height: 8
+                        )
+                        .cornerRadius(4)
+                        .animation(.spring(response: 0.8, dampingFraction: 0.7), value: analysis.totalCalories)
+                }
+            }
+            .frame(height: 8)
+            
+            Text("Daily Goal: 2000 kcal")
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.white)
+                .shadow(color: Color.black.opacity(0.1), radius: 10, x: 0, y: 5)
+        )
+    }
+    
+    private func mealTypeCard(analysis: FoodAnalysis) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: "clock.fill")
+                    .foregroundColor(.blue)
+                Text("Meal Type")
+                    .font(.headline)
+            }
+            
+            Picker("Meal Type", selection: Binding(
+                get: { analysis.mealType },
+                set: { analysisViewModel.updateMealType($0) }
+            )) {
+                Label("Breakfast", systemImage: "sunrise.fill").tag("breakfast")
+                Label("Lunch", systemImage: "sun.max.fill").tag("lunch")
+                Label("Dinner", systemImage: "moon.fill").tag("dinner")
+                Label("Snack", systemImage: "cup.and.saucer.fill").tag("snack")
+            }
+            .pickerStyle(.segmented)
+        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.white)
+                .shadow(color: Color.black.opacity(0.1), radius: 10, x: 0, y: 5)
+        )
+    }
+    
+    private func descriptionCard(analysis: FoodAnalysis) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: "text.alignleft")
+                    .foregroundColor(.purple)
+                Text("Description")
+                    .font(.headline)
+            }
+            
+            TextEditor(text: Binding(
+                get: { analysis.description },
+                set: { analysisViewModel.updateDescription($0) }
+            ))
+            .frame(minHeight: 100)
+            .padding(8)
+            .background(Color(.systemGray6))
+            .cornerRadius(8)
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+            )
+        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.white)
+                .shadow(color: Color.black.opacity(0.1), radius: 10, x: 0, y: 5)
+        )
+    }
+    
+    private func ingredientsCard(analysis: FoodAnalysis) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Image(systemName: "list.bullet")
+                    .foregroundColor(.green)
+                Text("Ingredients")
+                    .font(.headline)
+                Spacer()
+                Button(action: {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                        addNewIngredient()
+                    }
+                }) {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.title3)
+                        .foregroundColor(.green)
+                }
+            }
+            
+            ForEach(Array(analysis.ingredients.enumerated()), id: \.element.id) { index, ingredient in
+                IngredientRowView(
+                    ingredient: ingredient,
+                    onUpdate: { name, quantity, unit in
+                        analysisViewModel.updateIngredient(
+                            at: index,
+                            name: name,
+                            quantity: quantity,
+                            unit: unit
+                        )
+                    },
+                    onDelete: {
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                            analysisViewModel.removeIngredient(at: index)
+                        }
+                    }
+                )
+            }
+        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.white)
+                .shadow(color: Color.black.opacity(0.1), radius: 10, x: 0, y: 5)
+        )
+    }
+    
+    private var datePickerCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: "calendar")
+                    .foregroundColor(.indigo)
+                Text("Date")
+                    .font(.headline)
+            }
+            
+            DatePicker("", selection: $selectedDate, displayedComponents: .date)
+                .datePickerStyle(.compact)
+        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.white)
+                .shadow(color: Color.black.opacity(0.1), radius: 10, x: 0, y: 5)
+        )
+    }
+    
+    private var saveButton: some View {
+        Button(action: {
+            saveFoodLog()
+        }) {
+            HStack(spacing: 12) {
+                if analysisViewModel.isSaving {
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                } else {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.title3)
+                }
+                Text(analysisViewModel.isSaving ? "Saving..." : "Save Food Log")
+                    .fontWeight(.semibold)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 16)
+            .background(
+                LinearGradient(
+                    colors: [.green, Color.green.opacity(0.8)],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+            .foregroundColor(.white)
+            .cornerRadius(16)
+            .shadow(color: Color.green.opacity(0.3), radius: 10, x: 0, y: 5)
+        }
+        .disabled(analysisViewModel.isSaving)
+    }
+}
+
+/// Row view for editing a single ingredient
+struct IngredientRowView: View {
+    let ingredient: Ingredient
+    let onUpdate: (String, Double, String) -> Void
+    let onDelete: () -> Void
+    
+    @State private var name: String
+    @State private var quantity: String
+    @State private var unit: String
+    
+    init(ingredient: Ingredient, onUpdate: @escaping (String, Double, String) -> Void, onDelete: @escaping () -> Void) {
+        self.ingredient = ingredient
+        self.onUpdate = onUpdate
+        self.onDelete = onDelete
+        _name = State(initialValue: ingredient.name)
+        _quantity = State(initialValue: String(ingredient.quantity))
+        _unit = State(initialValue: ingredient.unit)
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                Image(systemName: "leaf.fill")
+                    .foregroundColor(.green)
+                    .font(.title3)
+                
+                TextField("Ingredient name", text: $name)
+                    .textFieldStyle(.plain)
+                    .font(.body)
+                    .onChange(of: name) { _, newValue in
+                        if let qty = Double(quantity) {
+                            onUpdate(newValue, qty, unit)
+                        }
+                    }
+                
+                Button(action: {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                        onDelete()
+                    }
+                }) {
+                    Image(systemName: "trash.circle.fill")
+                        .foregroundColor(.red)
+                        .font(.title3)
+                }
+            }
+            
+            HStack(spacing: 12) {
+                HStack(spacing: 4) {
+                    TextField("Qty", text: $quantity)
+                        .keyboardType(.decimalPad)
+                        .textFieldStyle(.plain)
+                        .frame(width: 70)
+                        .padding(8)
+                        .background(Color(.systemGray6))
+                        .cornerRadius(8)
+                        .onChange(of: quantity) { _, newValue in
+                            if let qty = Double(newValue) {
+                                onUpdate(name, qty, unit)
+                            }
+                        }
+                    
+                    TextField("Unit", text: $unit)
+                        .textFieldStyle(.plain)
+                        .frame(width: 60)
+                        .padding(8)
+                        .background(Color(.systemGray6))
+                        .cornerRadius(8)
+                        .onChange(of: unit) { _, newValue in
+                            if let qty = Double(quantity) {
+                                onUpdate(name, qty, newValue)
+                            }
+                        }
+                }
+                
+                Spacer()
+                
+                HStack(spacing: 4) {
+                    Image(systemName: "flame.fill")
+                        .foregroundColor(.orange)
+                        .font(.caption)
+                    Text("\(Int(ingredient.calories))")
+                        .font(.headline)
+                        .foregroundColor(.orange)
+                    Text("cal")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(Color.orange.opacity(0.1))
+                .cornerRadius(8)
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(.systemGray6).opacity(0.5))
+        )
     }
 }
 
@@ -200,4 +469,3 @@ struct FoodAnalysisView: View {
     )
     .environment(\.managedObjectContext, context)
 }
-
