@@ -190,4 +190,3 @@ fix: handle API timeout errors
 ## Contributing
 
 [Add contribution guidelines if applicable]
-
