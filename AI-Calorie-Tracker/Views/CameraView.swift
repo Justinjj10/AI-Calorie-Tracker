@@ -80,11 +80,12 @@ struct CameraView: View {
                     
                     Image(uiImage: image)
                         .resizable()
-                        .scaledToFill()
-                        .frame(height: 400)
+                        .scaledToFit()
+                        .frame(maxWidth: .infinity, maxHeight: 400)
                         .clipped()
                         .cornerRadius(20)
                 }
+                .frame(height: 400)
                 .padding(.horizontal)
                 
                 // Action Buttons
@@ -103,15 +104,15 @@ struct CameraView: View {
                     }) {
                         HStack {
                             Image(systemName: "arrow.triangle.2.circlepath")
-                            Text("Take Another Photo")
+                            Text("Cancel")
                                 .fontWeight(.medium)
                         }
-                        .foregroundColor(.blue)
+                        .foregroundColor(.red)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
                         .background(
                             RoundedRectangle(cornerRadius: 16)
-                                .fill(Color.blue.opacity(0.1))
+                                .fill(Color.red.opacity(0.1))
                         )
                     }
                     .padding(.horizontal)
