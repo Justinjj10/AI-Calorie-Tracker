@@ -14,7 +14,7 @@ struct AI_Calorie_TrackerApp: App {
 
     var body: some Scene {
         WindowGroup {
-            CameraView()
+            MainTabView()
                 .environment(\.managedObjectContext, persistenceController.container.viewContext)
         }
     }
